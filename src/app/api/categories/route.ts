@@ -1,11 +1,9 @@
 import { NextResponse } from 'next/server'
-import { PrismaClient } from '@prisma/client'
-
-const prisma = new PrismaClient()
+import db from '@/lib/db'
 
 export async function GET() {
   try {
-    const categories = await prisma.category.findMany({
+    const categories = await db.category.findMany({
       orderBy: { name: 'asc' }
     })
     return NextResponse.json({ categories })
@@ -13,8 +11,7 @@ export async function GET() {
     console.error('Error fetching categories:', error)
     return NextResponse.json({ 
       error: 'Failed to fetch categories',
-      details: error instanceof Error ? error.message : 'Unknown error',
-      dbUrl: process.env.DATABASE_URL ? 'SET' : 'NOT SET'
+      details: error instanceof Error ? error.message : 'Unknown error'
     }, { status: 500 })
   }
 }
@@ -30,7 +27,7 @@ export async function POST(request: Request) {
 
     const slug = name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')
 
-    const existing = await prisma.category.findFirst({
+    const existing = await db.category.findFirst({
       where: {
         OR: [{ name: name.trim() }, { slug }]
       }
@@ -40,7 +37,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Category already exists' }, { status: 400 })
     }
 
-    const category = await prisma.category.create({
+    const category = await db.category.create({
       data: { name: name.trim(), slug, image: null }
     })
 
@@ -49,8 +46,7 @@ export async function POST(request: Request) {
     console.error('Error creating category:', error)
     return NextResponse.json({ 
       error: 'Failed to create category',
-      details: error instanceof Error ? error.message : 'Unknown error',
-      dbUrl: process.env.DATABASE_URL ? 'SET' : 'NOT SET'
+      details: error instanceof Error ? error.message : 'Unknown error'
     }, { status: 500 })
   }
 }
