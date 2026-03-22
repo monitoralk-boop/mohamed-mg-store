@@ -1,5 +1,5 @@
 [build]
-  command = "bun run build"
+  command = "bun run db:push && bun run build"
   publish = ".next"
 
 [build.environment]
@@ -8,12 +8,6 @@
 
 [[plugins]]
   package = "@netlify/plugin-nextjs"
-
-[context.production]
-  environment = { NODE_ENV = "production" }
-
-[context.deploy-preview]
-  environment = { NODE_ENV = "production" }
 
 [[headers]]
   for = "/uploads/*"
