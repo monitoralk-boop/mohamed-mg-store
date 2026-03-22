@@ -1,0 +1,48 @@
+// PostgreSQL Schema for Production Deployment
+// Rename this file to schema.prisma when using PostgreSQL
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Category {
+  id        String    @id @default(cuid())
+  name      String    @unique
+  slug      String    @unique
+  image     String?
+  accounts  Account[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+model Account {
+  id           String        @id @default(cuid())
+  name         String
+  slug         String        @unique
+  description  String        @db.Text
+  price        Float
+  shortPreview String?
+  exchangeable Boolean       @default(false)
+  categoryId   String
+  category     Category      @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  images       AccountImage[]
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  @@index([categoryId])
+}
+
+model AccountImage {
+  id        String  @id @default(cuid())
+  url       String
+  accountId String
+  account   Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  order     Int     @default(0)
+
+  @@index([accountId])
+}
