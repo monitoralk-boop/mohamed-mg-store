@@ -18,6 +18,12 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
+    if (!process.env.DATABASE_URL) {
+      return NextResponse.json({ 
+        error: 'DATABASE_URL is not configured'
+      }, { status: 500 })
+    }
+
     const formData = await request.formData()
     const name = formData.get('name') as string
 
@@ -29,23 +35,16 @@ export async function POST(request: Request) {
 
     const existing = await db.category.findFirst({
       where: {
-        OR: [
-          { name: name.trim() },
-          { slug }
-        ]
+        OR: [{ name: name.trim() }, { slug }]
       }
     })
 
     if (existing) {
-      return NextResponse.json({ error: 'Category with this name already exists' }, { status: 400 })
+      return NextResponse.json({ error: 'Category already exists' }, { status: 400 })
     }
 
     const category = await db.category.create({
-      data: {
-        name: name.trim(),
-        slug,
-        image: null
-      }
+      data: { name: name.trim(), slug, image: null }
     })
 
     return NextResponse.json({ category })
