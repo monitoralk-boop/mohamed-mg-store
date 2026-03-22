@@ -1,12 +1,11 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
+// PostgreSQL schema for Neon database
 
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
@@ -24,15 +23,17 @@ model Account {
   id           String        @id @default(cuid())
   name         String
   slug         String        @unique
-  description  String
+  description  String        @db.Text
   price        Float
   shortPreview String?
   exchangeable Boolean       @default(false)
   categoryId   String
-  category     Category      @relation(fields: [categoryId], references: [id])
+  category     Category      @relation(fields: [categoryId], references: [id], onDelete: Cascade)
   images       AccountImage[]
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
+
+  @@index([categoryId])
 }
 
 model AccountImage {
@@ -41,4 +42,6 @@ model AccountImage {
   accountId String
   account   Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
   order     Int     @default(0)
+
+  @@index([accountId])
 }
