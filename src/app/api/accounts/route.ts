@@ -1,23 +1,24 @@
 import { NextResponse } from 'next/server'
-import { db } from '@/lib/db'
-import { writeFile, mkdir } from 'fs/promises'
-import path from 'path'
+import { PrismaClient } from '@prisma/client'
+
+const prisma = new PrismaClient()
 
 export async function GET() {
   try {
-    const accounts = await db.account.findMany({
+    const accounts = await prisma.account.findMany({
       include: {
         category: true,
-        images: {
-          orderBy: { order: 'asc' }
-        }
+        images: { orderBy: { order: 'asc' } }
       },
       orderBy: { createdAt: 'desc' }
     })
     return NextResponse.json({ accounts })
   } catch (error) {
     console.error('Error fetching accounts:', error)
-    return NextResponse.json({ error: 'Failed to fetch accounts' }, { status: 500 })
+    return NextResponse.json({ 
+      error: 'Failed to fetch accounts',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    }, { status: 500 })
   }
 }
 
@@ -33,13 +34,12 @@ export async function POST(request: Request) {
     const images = formData.getAll('images') as File[]
 
     if (!name || !description || !price || !categoryId) {
-      return NextResponse.json({ error: 'Name, description, price, and category are required' }, { status: 400 })
+      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
     }
 
     const slug = name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')
 
-    // Check if account with same name exists
-    const existing = await db.account.findFirst({
+    const existing = await prisma.account.findFirst({
       where: { name: name.trim() }
     })
 
@@ -47,17 +47,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Account with this name already exists' }, { status: 400 })
     }
 
-    // Verify category exists
-    const category = await db.category.findUnique({
-      where: { id: categoryId }
-    })
-
-    if (!category) {
-      return NextResponse.json({ error: 'Category not found' }, { status: 400 })
-    }
-
-    // Create account first
-    const account = await db.account.create({
+    const account = await prisma.account.create({
       data: {
         name: name.trim(),
         slug,
@@ -69,45 +59,12 @@ export async function POST(request: Request) {
       }
     })
 
-    // Upload and save images
-    if (images && images.length > 0 && images[0].size > 0) {
-      const uploadDir = path.join(process.cwd(), 'public', 'uploads')
-      await mkdir(uploadDir, { recursive: true })
-
-      for (let i = 0; i < images.length; i++) {
-        const image = images[i]
-        const bytes = await image.arrayBuffer()
-        const buffer = Buffer.from(bytes)
-        
-        const fileName = `${Date.now()}-${i}-${image.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`
-        const filePath = path.join(uploadDir, fileName)
-        
-        await writeFile(filePath, buffer)
-        
-        await db.accountImage.create({
-          data: {
-            url: `/uploads/${fileName}`,
-            accountId: account.id,
-            order: i
-          }
-        })
-      }
-    }
-
-    // Fetch the complete account with images
-    const completeAccount = await db.account.findUnique({
-      where: { id: account.id },
-      include: {
-        category: true,
-        images: {
-          orderBy: { order: 'asc' }
-        }
-      }
-    })
-
-    return NextResponse.json({ account: completeAccount })
+    return NextResponse.json({ account })
   } catch (error) {
     console.error('Error creating account:', error)
-    return NextResponse.json({ error: 'Failed to create account' }, { status: 500 })
+    return NextResponse.json({ 
+      error: 'Failed to create account',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    }, { status: 500 })
   }
 }
