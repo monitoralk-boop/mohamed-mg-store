@@ -659,58 +659,56 @@ function AdminPanel() {
   }
 
   // Account handlers
-  const handleSaveAccount = async () => {
-    if (!accountForm.name.trim() || !accountForm.description.trim() || !accountForm.price || !accountForm.categoryId) {
-      toast.error('Please fill in all required fields')
-      return
-    }
-
-    setLoading(true)
-    try {
-      const formData = new FormData()
-      formData.append('name', accountForm.name)
-      formData.append('description', accountForm.description)
-      formData.append('price', accountForm.price)
-      formData.append('shortPreview', accountForm.shortPreview)
-      formData.append('categoryId', accountForm.categoryId)
-      formData.append('exchangeable', String(accountForm.exchangeable))
-      
-      accountForm.images.forEach((img, index) => {
-        formData.append('images', img)
-      })
-
-      const url = editingAccount ? `/api/accounts/${editingAccount.id}` : '/api/accounts'
-      const method = editingAccount ? 'PUT' : 'POST'
-
-      const res = await fetch(url, {
-        method,
-        body: formData
-      })
-
-      if (res.ok) {
-        toast.success(editingAccount ? 'Account updated' : 'Account created')
-        setAccountDialogOpen(false)
-        setAccountForm({
-          id: '',
-          name: '',
-          description: '',
-          price: '',
-          shortPreview: '',
-          categoryId: '',
-          exchangeable: false,
-          images: []
-        })
-        setEditingAccount(null)
-        fetchData()
-      } else {
-        const data = await res.json()
-        toast.error(data.error || 'Failed to save account')
-      }
-    } catch (error) {
-      toast.error('An error occurred')
-    }
-    setLoading(false)
+const handleSaveAccount = async () => {
+  if (!accountForm.name.trim() || !accountForm.description.trim() || !accountForm.price || !accountForm.categoryId) {
+    toast.error('Please fill in all required fields')
+    return
   }
+
+  setLoading(true)
+  try {
+    const formData = new FormData()
+    formData.append('name', accountForm.name)
+    formData.append('description', accountForm.description)
+    formData.append('price', accountForm.price)
+    formData.append('shortPreview', accountForm.shortPreview)
+    formData.append('categoryId', accountForm.categoryId)
+    formData.append('exchangeable', String(accountForm.exchangeable))
+    formData.append('imageUrls', JSON.stringify(accountForm.imageUrls))
+
+    const url = editingAccount ? `/api/accounts/${editingAccount.id}` : '/api/accounts'
+    const method = editingAccount ? 'PUT' : 'POST'
+
+    const res = await fetch(url, {
+      method,
+      body: formData
+    })
+
+    if (res.ok) {
+      toast.success(editingAccount ? 'Account updated' : 'Account created')
+      setAccountDialogOpen(false)
+      setAccountForm({
+        id: '',
+        name: '',
+        description: '',
+        price: '',
+        shortPreview: '',
+        categoryId: '',
+        exchangeable: false,
+        imageUrls: [],
+        uploadingImages: false
+      })
+      setEditingAccount(null)
+      fetchData()
+    } else {
+      const data = await res.json()
+      toast.error(data.error || 'Failed to save account')
+    }
+  } catch (error) {
+    toast.error('An error occurred')
+  }
+  setLoading(false)
+}
 
   const handleDeleteAccount = async (id: string) => {
     try {
@@ -1145,25 +1143,78 @@ const openAccountDialog = (account?: Account) => {
               </div>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="accountImages">Images * (multiple allowed)</Label>
-              <Input
-                id="accountImages"
-                type="file"
-                accept="image/*"
-                multiple
-                onChange={(e) => setAccountForm({ 
-                  ...accountForm, 
-                  images: Array.from(e.target.files || []) 
-                })}
-              />
-              {editingAccount?.images && editingAccount.images.length > 0 && accountForm.images.length === 0 && (
-                <div className="flex gap-2 flex-wrap mt-2">
-                  {editingAccount.images.map((img, idx) => (
-                    <img key={img.id} src={img.url} alt={`Image ${idx + 1}`} className="w-16 h-16 object-cover rounded" />
-                  ))}
-                  <p className="text-xs text-muted-foreground w-full">Upload new images to replace existing ones</p>
-                </div>
-              )}
+  <Label>Images</Label>
+  <Input
+    type="file"
+    accept="image/*"
+    multiple
+    onChange={async (e) => {
+      const files = Array.from(e.target.files || [])
+      if (files.length === 0) return
+      
+      setAccountForm(prev => ({ ...prev, uploadingImages: true }))
+      
+      try {
+        const uploadedUrls: string[] = []
+        for (const file of files) {
+          const uploadFormData = new FormData()
+          uploadFormData.append('file', file)
+          
+          const res = await fetch('/api/upload', {
+            method: 'POST',
+            body: uploadFormData
+          })
+          
+          if (res.ok) {
+            const data = await res.json()
+            uploadedUrls.push(data.url)
+          } else {
+            console.error('Upload failed for', file.name)
+          }
+        }
+        
+        setAccountForm(prev => ({
+          ...prev,
+          imageUrls: [...prev.imageUrls, ...uploadedUrls],
+          uploadingImages: false
+        }))
+        toast.success(`${uploadedUrls.length} image(s) uploaded`)
+      } catch (error) {
+        toast.error('Failed to upload images')
+        setAccountForm(prev => ({ ...prev, uploadingImages: false }))
+      }
+    }}
+    disabled={accountForm.uploadingImages}
+  />
+  
+  {accountForm.uploadingImages && (
+    <p className="text-sm text-muted-foreground">Uploading...</p>
+  )}
+  
+  {accountForm.imageUrls.length > 0 && (
+    <div className="flex gap-2 flex-wrap mt-2">
+      {accountForm.imageUrls.map((url, idx) => (
+        <div key={idx} className="relative">
+          <img src={url} alt={`Image ${idx + 1}`} className="w-16 h-16 object-cover rounded" />
+          <Button
+            type="button"
+            variant="destructive"
+            size="sm"
+            className="absolute -top-2 -right-2 h-5 w-5 rounded-full p-0"
+            onClick={() => {
+              setAccountForm(prev => ({
+                ...prev,
+                imageUrls: prev.imageUrls.filter((_, i) => i !== idx)
+              }))
+            }}
+          >
+            ×
+          </Button>
+        </div>
+      ))}
+    </div>
+  )}
+</div>
               {accountForm.images.length > 0 && (
                 <p className="text-sm text-muted-foreground">{accountForm.images.length} image(s) selected</p>
               )}
