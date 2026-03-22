@@ -29,6 +29,8 @@ export async function POST(request: Request) {
     const shortPreview = formData.get('shortPreview') as string
     const categoryId = formData.get('categoryId') as string
     const exchangeable = formData.get('exchangeable') === 'true'
+    const imageUrlsJson = formData.get('imageUrls') as string
+    const imageUrls: string[] = imageUrlsJson ? JSON.parse(imageUrlsJson) : []
 
     if (!name || !description || !price || !categoryId) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
@@ -44,6 +46,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Account already exists' }, { status: 400 })
     }
 
+    // Create account
     const account = await db.account.create({
       data: {
         name: name.trim(),
@@ -56,7 +59,27 @@ export async function POST(request: Request) {
       }
     })
 
-    return NextResponse.json({ account })
+    // Create images
+    for (let i = 0; i < imageUrls.length; i++) {
+      await db.accountImage.create({
+        data: {
+          url: imageUrls[i],
+          accountId: account.id,
+          order: i
+        }
+      })
+    }
+
+    // Fetch account with images
+    const accountWithImages = await db.account.findUnique({
+      where: { id: account.id },
+      include: {
+        category: true,
+        images: { orderBy: { order: 'asc' } }
+      }
+    })
+
+    return NextResponse.json({ account: accountWithImages })
   } catch (error) {
     console.error('Error creating account:', error)
     return NextResponse.json({ 
