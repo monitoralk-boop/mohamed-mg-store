@@ -767,34 +767,36 @@ function AdminPanel() {
     )
   }
 
-  const openAccountDialog = (account?: Account) => {
-    if (account) {
-      setEditingAccount(account)
-      setAccountForm({
-        id: account.id,
-        name: account.name,
-        description: account.description,
-        price: account.price.toString(),
-        shortPreview: account.shortPreview || '',
-        categoryId: account.categoryId,
-        exchangeable: account.exchangeable,
-        images: []
-      })
-    } else {
-      setEditingAccount(null)
-      setAccountForm({
-        id: '',
-        name: '',
-        description: '',
-        price: '',
-        shortPreview: '',
-        categoryId: categories[0]?.id || '',
-        exchangeable: false,
-        images: []
-      })
-    }
-    setAccountDialogOpen(true)
+const openAccountDialog = (account?: Account) => {
+  if (account) {
+    setEditingAccount(account)
+    setAccountForm({
+      id: account.id,
+      name: account.name,
+      description: account.description,
+      price: account.price.toString(),
+      shortPreview: account.shortPreview || '',
+      categoryId: account.categoryId,
+      exchangeable: account.exchangeable,
+      imageUrls: account.images?.map(img => img.url) || [],
+      uploadingImages: false
+    })
+  } else {
+    setEditingAccount(null)
+    setAccountForm({
+      id: '',
+      name: '',
+      description: '',
+      price: '',
+      shortPreview: '',
+      categoryId: categories[0]?.id || '',
+      exchangeable: false,
+      imageUrls: [],
+      uploadingImages: false
+    })
   }
+  setAccountDialogOpen(true)
+}
 
   const openCategoryDialog = (category?: Category) => {
     if (category) {
