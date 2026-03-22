@@ -1,11 +1,9 @@
 import { NextResponse } from 'next/server'
-import { PrismaClient } from '@prisma/client'
-
-const prisma = new PrismaClient()
+import db from '@/lib/db'
 
 export async function GET() {
   try {
-    const accounts = await prisma.account.findMany({
+    const accounts = await db.account.findMany({
       include: {
         category: true,
         images: { orderBy: { order: 'asc' } }
@@ -31,7 +29,6 @@ export async function POST(request: Request) {
     const shortPreview = formData.get('shortPreview') as string
     const categoryId = formData.get('categoryId') as string
     const exchangeable = formData.get('exchangeable') === 'true'
-    const images = formData.getAll('images') as File[]
 
     if (!name || !description || !price || !categoryId) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
@@ -39,15 +36,15 @@ export async function POST(request: Request) {
 
     const slug = name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')
 
-    const existing = await prisma.account.findFirst({
+    const existing = await db.account.findFirst({
       where: { name: name.trim() }
     })
 
     if (existing) {
-      return NextResponse.json({ error: 'Account with this name already exists' }, { status: 400 })
+      return NextResponse.json({ error: 'Account already exists' }, { status: 400 })
     }
 
-    const account = await prisma.account.create({
+    const account = await db.account.create({
       data: {
         name: name.trim(),
         slug,
