@@ -1,22 +1,6 @@
 {
-  "$schema": "https://openapi.vercel.sh/vercel.json",
-  "buildCommand": "bun run build",
-  "devCommand": "bun run dev",
+  "buildCommand": "prisma generate && next build",
   "installCommand": "bun install",
   "framework": "nextjs",
-  "regions": ["iad1"],
-  "env": {
-    "DATABASE_URL": "file:./data.db"
-  },
-  "build": {
-    "env": {
-      "DATABASE_URL": "file:./data.db"
-    }
-  },
-  "functions": {
-    "src/app/api/**/route.ts": {
-      "memory": 1024,
-      "maxDuration": 10
-    }
-  }
+  "regions": ["iad1"]
 }
